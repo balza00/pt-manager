@@ -1037,6 +1037,9 @@ function openAddSession(dateStr, slotTime) {
   const clientOpts = state.clients.length
     ? state.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
     : '<option value="">Nessun cliente – aggiungine uno</option>';
+  const unionOpts = (state.unionClients && state.unionClients.length)
+    ? state.unionClients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
+    : '<option value="">Nessun allievo Union – aggiungine uno</option>';
   // Calcola gli intervalli occupati (in minuti dall'inizio giornata) considerando la durata
   const busyRanges = state.sessions.filter(s => s.date === selDate).map(s => {
     const [sh, sm] = s.startTime.split(':').map(Number);
@@ -1084,7 +1087,7 @@ function openAddSession(dateStr, slotTime) {
       <div class="form-group"><label>Prezzo classe (€)</label><input id="s-classprice" type="number" value="15"></div>
     </div>
     <div id="s-union-row" style="display:none">
-      <div class="form-group"><label>Allievo Union</label><select id="s-unionclient"></select></div>
+      <div class="form-group"><label>Allievo Union</label><select id="s-unionclient">${unionOpts}</select></div>
     </div>
     <div class="form-group"><label>Note</label><input id="s-notes" type="text" placeholder="Opzionale"></div>
     <div class="form-group" style="background:var(--bg3);border-radius:12px;padding:12px 14px">
@@ -1119,14 +1122,6 @@ function toggleSessionType() {
   document.getElementById('s-client-row').style.display = (t==='class'||t==='union')?'none':'block';
   document.getElementById('s-class-row').style.display = t==='class'?'block':'none';
   document.getElementById('s-union-row').style.display = t==='union'?'block':'none';
-  if (t==='union') {
-    const sel = document.getElementById('s-unionclient');
-    if (!state.unionClients || !state.unionClients.length) {
-      sel.innerHTML = '<option value="">Nessun allievo Union — aggiungine uno</option>';
-    } else {
-      sel.innerHTML = state.unionClients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-    }
-  }
 }
 
 function checkSlotConflict() {
