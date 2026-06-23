@@ -1,0 +1,87 @@
+name: Generate Union ICS
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # ogni 30 minuti
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate union.ics from Supabase
+        env:
+          SB_URL: https://xuxkeftsozygpejavood.supabase.co
+          SB_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1eGtlZnRzb3p5Z3BlamF2b29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMTQ0NTMsImV4cCI6MjA5NjY5MDQ1M30.DCjNfRpFvIGeFEZavgX_D02o_jfSLo2JmM6N7HwlmJc
+        run: |
+          node -e "
+          const https = require('https');
+
+          const options = {
+            hostname: 'xuxkeftsozygpejavood.supabase.co',
+            path: '/rest/v1/app_data?id=eq.main&select=data',
+            headers: {
+              'apikey': process.env.SB_KEY,
+              'Authorization': 'Bearer ' + process.env.SB_KEY
+            }
+          };
+
+          https.get(options, res => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+              const rows = JSON.parse(body);
+              const state = rows[0]?.data || { sessions: [], unionClients: [] };
+              const sessions = (state.sessions || []).filter(s => s.type === 'union');
+              const clients = state.unionClients || [];
+
+              const now = new Date().toISOString().replace(/[-:]/g,'').split('.')[0] + 'Z';
+
+              let ics = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//PT Manager//Union Calendar//IT',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH',
+                'X-WR-CALNAME:Lezioni Union',
+                'X-WR-CALDESC:Calendario lezioni Union',
+                'X-WR-TIMEZONE:Europe/Rome',
+              ].join('\r\n');
+
+              sessions.forEach(s => {
+                const client = clients.find(c => c.id === s.unionClientId);
+                const name = client ? client.name : (s.unionName || 'Lezione Union');
+                const [sy, sm, sd] = s.date.split('-');
+                const [sh, smin] = s.startTime.split(':');
+                const [eh, emin] = s.endTime.split(':');
+                const dtstart = sy + sm + sd + 'T' + sh.padStart(2,'0') + smin.padStart(2,'0') + '00';
+                const dtend   = sy + sm + sd + 'T' + eh.padStart(2,'0') + emin.padStart(2,'0') + '00';
+                ics += '\r\nBEGIN:VEVENT';
+                ics += '\r\nUID:' + s.id + '@ptmanager-union';
+                ics += '\r\nDTSTAMP:' + now;
+                ics += '\r\nDTSTART;TZID=Europe/Rome:' + dtstart;
+                ics += '\r\nDTEND;TZID=Europe/Rome:' + dtend;
+                ics += '\r\nSUMMARY:Union - ' + name;
+                if (s.notes) ics += '\r\nDESCRIPTION:' + s.notes;
+                ics += '\r\nEND:VEVENT';
+              });
+
+              ics += '\r\nEND:VCALENDAR';
+
+              require('fs').writeFileSync('union.ics', ics);
+              console.log('Generati ' + sessions.length + ' eventi Union');
+            });
+          });
+          "
+
+      - name: Commit union.ics if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add union.ics
+          git diff --cached --quiet || git commit -m "Update union.ics [skip ci]"
+          git push
