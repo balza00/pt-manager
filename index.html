@@ -1084,8 +1084,7 @@ function openAddSession(dateStr, slotTime) {
       <div class="form-group"><label>Prezzo classe (€)</label><input id="s-classprice" type="number" value="15"></div>
     </div>
     <div id="s-union-row" style="display:none">
-      <div class="form-group"><label>Nome lezione</label><input id="s-unionname" type="text" placeholder="Es. Lezione Union..."></div>
-      <div class="form-group"><label>Prezzo lezione (€)</label><input id="s-unionprice" type="number" value="0"></div>
+      <div class="form-group"><label>Allievo Union</label><select id="s-unionclient"></select></div>
     </div>
     <div class="form-group"><label>Note</label><input id="s-notes" type="text" placeholder="Opzionale"></div>
     <div class="form-group" style="background:var(--bg3);border-radius:12px;padding:12px 14px">
@@ -1120,6 +1119,14 @@ function toggleSessionType() {
   document.getElementById('s-client-row').style.display = (t==='class'||t==='union')?'none':'block';
   document.getElementById('s-class-row').style.display = t==='class'?'block':'none';
   document.getElementById('s-union-row').style.display = t==='union'?'block':'none';
+  if (t==='union') {
+    const sel = document.getElementById('s-unionclient');
+    if (!state.unionClients || !state.unionClients.length) {
+      sel.innerHTML = '<option value="">Nessun allievo Union — aggiungine uno</option>';
+    } else {
+      sel.innerHTML = state.unionClients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    }
+  }
 }
 
 function checkSlotConflict() {
@@ -1154,9 +1161,13 @@ function saveSession(id) {
     const cpRaw = document.getElementById('s-classprice').value;
     session.classPrice = cpRaw === '' ? 15 : (parseFloat(cpRaw) || 0);
   } else if (type==='union') {
-    session.unionName = document.getElementById('s-unionname').value || 'Lezione Union';
-    const upRaw = document.getElementById('s-unionprice').value;
-    session.unionPrice = upRaw === '' ? 0 : (parseFloat(upRaw) || 0);
+    const ucid = document.getElementById('s-unionclient').value;
+    if (!ucid) return alert('Aggiungi prima un allievo Union');
+    const uc = state.unionClients.find(x=>x.id===ucid);
+    session.unionClientId = ucid;
+    session.unionName = uc ? uc.name : 'Union';
+    session.unionPrice = uc ? (uc.pricePerSession||0) : 0;
+    session.pkg = uc ? (uc.pkg||0) : 0;
   } else {
     const cid = document.getElementById('s-client').value;
     if (!cid) return alert('Aggiungi prima un cliente');
