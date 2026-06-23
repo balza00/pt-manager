@@ -1557,7 +1557,7 @@ function renderUnion() {
 
   const cards = state.unionClients.map(c => {
     const currentPkg = c.pkg || 0;
-    const calLessons = state.sessions.filter(s => s.type==='union' && s.unionClientId===c.id && (s.pkg||0)===currentPkg).length;
+    const calLessons = state.sessions.filter(s => s.unionClientId===c.id && (s.pkg||0)===currentPkg).length;
     const done = calLessons + (c.startingSessions||0);
     const pct = c.totalSessions ? Math.min(100, Math.round(done/c.totalSessions*100)) : 0;
     const rem = c.totalSessions ? Math.max(0, c.totalSessions - done) : null;
