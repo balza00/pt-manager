@@ -94,5 +94,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/balza00/pt-manager.git
           git add union.ics
-          git diff --cached --quiet && echo "Nessuna modifica" || git commit -m "Update union.ics [skip ci]" && git push
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica"
+          else
+            git commit -m "Update union.ics [skip ci]"
+            git push
+          fi
