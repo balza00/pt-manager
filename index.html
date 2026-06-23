@@ -54,8 +54,21 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 #content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 16px calc(var(--nav-h) + 16px); -webkit-overflow-scrolling: touch; }
 #nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: stretch; padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
 .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: none; border: none; color: var(--text3); cursor: pointer; font-family: var(--font); font-size: 10px; transition: all 0.15s; border-top: 2px solid transparent; padding-top: 4px; }
-.nav-btn i { font-size: 22px; }
+.nav-btn i { font-size: 20px; }
 .nav-btn.active { color: var(--accent); border-top-color: var(--accent); }
+
+/* UNION */
+.union-client-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 10px; transition: all 0.15s; }
+.union-client-card:active { transform: scale(0.99); }
+.union-client-card.has-lessons { border-color: rgba(167,139,250,0.3); }
+.union-avatar { width: 44px; height: 44px; border-radius: 13px; background: var(--purple-dim); color: var(--purple); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; flex-shrink: 0; }
+.union-lesson-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.union-lesson-item:last-child { border-bottom: none; }
+.union-overview { display: flex; gap: 8px; margin-bottom: 14px; }
+.union-ov-card { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+.union-ov-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; }
+.union-ov-value { font-size: 22px; font-weight: 700; margin-top: 3px; letter-spacing: -0.5px; }
+.union-ov-value.purple { color: var(--purple); }
 
 /* SECTIONS */
 .section { display: none; }
@@ -377,6 +390,15 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <div id="summary-content"></div>
     </div>
 
+    <!-- UNION -->
+    <div id="sec-union" class="section">
+      <div class="sec-header">
+        <div class="sec-title" style="display:flex;align-items:center;gap:8px"><i class="ti ti-star" style="color:var(--purple)"></i> Lezioni Union</div>
+        <button class="btn btn-sm" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3)" onclick="openAddUnionClient()"><i class="ti ti-plus"></i> Nuovo</button>
+      </div>
+      <div id="union-list"></div>
+    </div>
+
     <!-- IMPOSTAZIONI -->
     <div id="sec-impostazioni" class="section">
       <div class="sec-title" style="margin-bottom:16px">Impostazioni</div>
@@ -406,6 +428,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <button class="nav-btn" data-tab="riepilogo" onclick="showTab('riepilogo')">
       <i class="ti ti-chart-bar"></i><span>Riepilogo</span>
     </button>
+    <button class="nav-btn" data-tab="union" onclick="showTab('union')">
+      <i class="ti ti-star"></i><span>Union</span>
+    </button>
     <button class="nav-btn" data-tab="impostazioni" onclick="showTab('impostazioni')">
       <i class="ti ti-settings"></i><span>Altro</span>
     </button>
@@ -418,7 +443,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
 <script>
 // ── STATE ──
-let state = { clients: [], sessions: [] };
+let state = { clients: [], sessions: [], unionClients: [] };
 const now = new Date();
 let viewYear = now.getFullYear(), viewMonth = now.getMonth();
 let weekStart = getMonday(now);
@@ -552,8 +577,9 @@ async function loadState() {
   try {
     const s = localStorage.getItem('pt_manager');
     if (s) state = JSON.parse(s);
-    else state = { clients: [], sessions: [] };
-  } catch(e) { state = { clients: [], sessions: [] }; }
+    else state = { clients: [], sessions: [], unionClients: [] };
+    if (!state.unionClients) state.unionClients = [];
+  } catch(e) { state = { clients: [], sessions: [], unionClients: [] }; }
   render();
   // Poi carica da Supabase (fonte di verità) e aggiorna
   const loaded = await loadFromSupabase();
@@ -582,13 +608,14 @@ function clearData() {
 }
 
 // ── RENDER ──
-function render() { renderCal(); renderClients(); renderRiepilogo(); updateDataSize(); }
+function render() { renderCal(); renderClients(); renderRiepilogo(); renderUnion(); updateDataSize(); }
 
 function showTab(t) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('sec-' + t).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   if (t === 'riepilogo') renderRiepilogo();
+  if (t === 'union') renderUnion();
   if (t === 'impostazioni') renderInstallSection();
   document.getElementById('content').scrollTo(0, 0);
 }
@@ -1500,6 +1527,185 @@ function checkSession() {
     return true;
   }
   return false;
+}
+
+// ── UNION ──
+function renderUnion() {
+  const list = document.getElementById('union-list');
+  if (!list) return;
+  if (!state.unionClients) state.unionClients = [];
+
+  const totalClients = state.unionClients.length;
+  const now2 = new Date();
+  const thisMonth = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}`;
+  const lessonsThisMonth = state.sessions.filter(s => s.type==='union' && s.date && s.date.startsWith(thisMonth)).length;
+  const totalLessons = state.sessions.filter(s => s.type==='union').length;
+
+  if (!totalClients) {
+    list.innerHTML = `
+      <div class="union-overview">
+        <div class="union-ov-card"><div class="union-ov-label">Allievi</div><div class="union-ov-value">0</div></div>
+        <div class="union-ov-card"><div class="union-ov-label">Lezioni mese</div><div class="union-ov-value purple">0</div></div>
+        <div class="union-ov-card"><div class="union-ov-label">Totale lezioni</div><div class="union-ov-value">0</div></div>
+      </div>
+      <div class="empty"><i class="ti ti-star"></i><p>Nessun allievo Union.<br>Aggiungine uno con il tasto +</p></div>`;
+    return;
+  }
+
+  const overview = `<div class="union-overview">
+    <div class="union-ov-card"><div class="union-ov-label">Allievi</div><div class="union-ov-value">${totalClients}</div></div>
+    <div class="union-ov-card"><div class="union-ov-label">Lezioni mese</div><div class="union-ov-value purple">${lessonsThisMonth}</div></div>
+    <div class="union-ov-card"><div class="union-ov-label">Totale lezioni</div><div class="union-ov-value">${totalLessons}</div></div>
+  </div>`;
+
+  const cards = state.unionClients.map(c => {
+    const lessons = state.sessions.filter(s => s.type==='union' && s.unionClientId===c.id).sort((a,b)=>b.date.localeCompare(a.date));
+    const count = lessons.length;
+    const last = lessons[0] ? `${lessons[0].date} · ${lessons[0].startTime}` : 'Nessuna ancora';
+    const initials = c.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    return `<div class="union-client-card${count>0?' has-lessons':''}">
+      <div style="display:flex;align-items:center;gap:13px;cursor:pointer" onclick="openUnionClientDetail('${c.id}')">
+        <div class="union-avatar">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:600;letter-spacing:-0.2px">${c.name}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Ultima: ${last}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:22px;font-weight:700;color:var(--purple);font-family:var(--mono)">${count}</div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase">lezioni</div>
+        </div>
+        <i class="ti ti-chevron-right" style="color:var(--text3);font-size:18px"></i>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn btn-sm btn-full" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3)" onclick="openAddUnionSession('${c.id}')"><i class="ti ti-plus"></i> Aggiungi lezione</button>
+        <button class="btn btn-icon btn-sm" onclick="editUnionClient('${c.id}')"><i class="ti ti-pencil"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.innerHTML = overview + cards;
+}
+
+function openUnionClientDetail(id) {
+  const c = state.unionClients.find(x=>x.id===id); if (!c) return;
+  const lessons = state.sessions.filter(s => s.type==='union' && s.unionClientId===id).sort((a,b)=>b.date.localeCompare(a.date));
+  const rows = lessons.length ? lessons.map(s => `
+    <div class="union-lesson-item">
+      <div>
+        <div style="font-size:14px;font-weight:500">${s.date}</div>
+        <div style="font-size:12px;color:var(--text2);font-family:var(--mono)">${s.startTime} – ${s.endTime}${s.notes?' · '+s.notes:''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${s.unionPrice ? `<span style="font-family:var(--mono);font-size:14px;color:var(--purple)">€${s.unionPrice}</span>` : ''}
+        <button class="btn btn-icon btn-sm btn-danger" onclick="deleteSession('${s.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`).join('') : '<div style="text-align:center;padding:20px;color:var(--text3);font-size:14px">Nessuna lezione ancora.</div>';
+
+  openSheet(`
+    <h3 style="display:flex;align-items:center;gap:10px"><div class="union-avatar" style="width:36px;height:36px;font-size:13px">${c.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}</div>${c.name}</h3>
+    <div style="display:flex;gap:8px;margin-bottom:20px">
+      <div class="metric" style="flex:1;padding:10px 12px"><div class="metric-label">Lezioni totali</div><div style="font-size:22px;font-weight:700;color:var(--purple);font-family:var(--mono)">${lessons.length}</div></div>
+      ${c.notes ? `<div class="metric" style="flex:2;padding:10px 12px"><div class="metric-label">Note</div><div style="font-size:13px;color:var(--text2);margin-top:2px">${c.notes}</div></div>` : ''}
+    </div>
+    <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;font-weight:600">Storico lezioni</div>
+    <div>${rows}</div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-danger btn-icon" onclick="deleteUnionClient('${id}')"><i class="ti ti-trash"></i></button>
+      <button class="btn btn-full" onclick="closeSheet()">Chiudi</button>
+      <button class="btn btn-full" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3)" onclick="closeSheet();openAddUnionSession('${id}')"><i class="ti ti-plus"></i> Lezione</button>
+    </div>`);
+}
+
+function openAddUnionClient() {
+  openSheet(`
+    <h3>Nuovo allievo Union</h3>
+    <div class="form-group"><label>Nome completo</label><input id="uc-name" type="text" placeholder="Mario Rossi" autocomplete="name"></div>
+    <div class="form-group"><label>Note <span style="color:var(--text3)">(opzionale)</span></label><input id="uc-notes" type="text" placeholder="Es. principiante, livello avanzato..."></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-full" onclick="closeSheet()">Annulla</button>
+      <button class="btn btn-full" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3);font-weight:500" onclick="saveUnionClient()">Salva</button>
+    </div>`);
+}
+
+function editUnionClient(id) {
+  const c = state.unionClients.find(x=>x.id===id); if (!c) return;
+  openSheet(`
+    <h3>Modifica allievo</h3>
+    <div class="form-group"><label>Nome completo</label><input id="uc-name" type="text" value="${c.name}"></div>
+    <div class="form-group"><label>Note</label><input id="uc-notes" type="text" value="${c.notes||''}"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-danger btn-icon" onclick="deleteUnionClient('${id}')"><i class="ti ti-trash"></i></button>
+      <button class="btn btn-full" onclick="closeSheet()">Annulla</button>
+      <button class="btn btn-full" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3);font-weight:500" onclick="saveUnionClient('${id}')">Aggiorna</button>
+    </div>`);
+}
+
+function saveUnionClient(id) {
+  const name = document.getElementById('uc-name').value.trim();
+  if (!name) return alert('Inserisci il nome');
+  if (!state.unionClients) state.unionClients = [];
+  const client = { id: id||Date.now().toString(), name, notes: document.getElementById('uc-notes').value.trim() };
+  if (id) { const i=state.unionClients.findIndex(c=>c.id===id); state.unionClients[i]=client; }
+  else state.unionClients.push(client);
+  saveState(); closeSheet(); renderUnion();
+  toast(id ? 'Allievo aggiornato' : 'Allievo aggiunto ✓');
+}
+
+function deleteUnionClient(id) {
+  if (!confirm('Eliminare questo allievo e tutte le sue lezioni?')) return;
+  state.unionClients = state.unionClients.filter(c=>c.id!==id);
+  state.sessions = state.sessions.filter(s=>!(s.type==='union'&&s.unionClientId===id));
+  saveState(); closeSheet(); renderUnion();
+  toast('Allievo eliminato');
+}
+
+function openAddUnionSession(clientId) {
+  const c = state.unionClients.find(x=>x.id===clientId); if (!c) return;
+  const todayStr = fmtDate(new Date());
+  let hourOpts = '';
+  for (let h=7;h<=21;h++) hourOpts+=`<option value="${h}"${h===9?' selected':''}>${String(h).padStart(2,'0')}</option>`;
+  openSheet(`
+    <h3>Nuova lezione — ${c.name}</h3>
+    <div class="form-group"><label>Data</label><input id="ul-date" type="date" value="${todayStr}"></div>
+    <div class="form-group"><label>Orario inizio</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="ul-hour" style="flex:1">${hourOpts}</select>
+        <span style="color:var(--text2);font-weight:600">:</span>
+        <select id="ul-min" style="flex:1">
+          <option value="0">00</option><option value="15">15</option><option value="30">30</option><option value="45">45</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Durata</label><select id="ul-dur">
+      <option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 ora</option>
+      <option value="90">1h 30min</option><option value="120">2 ore</option>
+    </select></div>
+    <div class="form-group"><label>Prezzo lezione (€) <span style="color:var(--text3)">(0 = incluso)</span></label><input id="ul-price" type="number" value="0" min="0"></div>
+    <div class="form-group"><label>Note <span style="color:var(--text3)">(opzionale)</span></label><input id="ul-notes" type="text" placeholder="Es. ottima progressione..."></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-full" onclick="closeSheet()">Annulla</button>
+      <button class="btn btn-full" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3);font-weight:500" onclick="saveUnionLesson('${clientId}')">Salva lezione</button>
+    </div>`);
+}
+
+function saveUnionLesson(clientId) {
+  const date = document.getElementById('ul-date').value;
+  if (!date) return alert('Seleziona la data');
+  const h = document.getElementById('ul-hour').value;
+  const m = document.getElementById('ul-min').value;
+  const start = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  const dur = document.getElementById('ul-dur').value;
+  const price = parseFloat(document.getElementById('ul-price').value)||0;
+  const notes = document.getElementById('ul-notes').value;
+  const c = state.unionClients.find(x=>x.id===clientId);
+  const session = {
+    id: Date.now().toString(), date, startTime: start, endTime: endTime(start, dur),
+    type: 'union', unionClientId: clientId, unionName: c ? c.name : 'Union',
+    unionPrice: price, notes
+  };
+  state.sessions.push(session);
+  saveState(); closeSheet(); renderUnion(); renderCal();
+  toast('Lezione aggiunta ✓');
 }
 
 // ── SERVICE WORKER ──
