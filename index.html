@@ -1908,6 +1908,23 @@ function saveUnionLesson(clientId) {
   toast('Lezione aggiunta ✓');
 }
 
+// ── AUTO UPDATE ──
+let lastVersion = null;
+async function checkForUpdate() {
+  try {
+    const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (lastVersion === null) { lastVersion = data.v; return; }
+    if (data.v !== lastVersion) { window.location.reload(); }
+  } catch(e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkForUpdate();
+});
+setInterval(checkForUpdate, 2 * 60 * 1000);
+checkForUpdate();
+
 // ── SERVICE WORKER ──
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(()=>{});

@@ -90,15 +90,16 @@ jobs:
           });
           EOF
 
-      - name: Commit union.ics if changed
+      - name: Aggiorna version.json e commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/balza00/pt-manager.git
-          git add union.ics
+          echo "{\"v\":\"$(date +%s)\"}" > version.json
+          git add union.ics version.json
           if git diff --cached --quiet; then
             echo "Nessuna modifica"
           else
-            git commit -m "Update union.ics [skip ci]"
+            git commit -m "Update union.ics + version [skip ci]"
             git push
           fi
