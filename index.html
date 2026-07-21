@@ -402,6 +402,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <button class="btn btn-sm" onclick="openAddClassSession()"><i class="ti ti-plus"></i> Nuova classe</button>
       </div>
       <div id="union-classes-list"></div>
+      <div id="union-recap"></div>
     </div>
 
     <!-- IMPOSTAZIONI -->
@@ -1643,6 +1644,7 @@ function renderUnion() {
   const classSessions = state.sessions.filter(s => s.type==='class').sort((a,b)=>b.date.localeCompare(a.date));
   if (!classSessions.length) {
     classesList.innerHTML = `<div class="day-panel-empty" style="margin-bottom:10px"><i class="ti ti-users-group"></i>Nessuna classe ancora<br><span style="font-size:12px">Tocca "Nuova classe" per aggiungerne una</span></div>`;
+    renderUnionRecap();
     return;
   }
   // Raggruppa per mese
@@ -1675,6 +1677,52 @@ function renderUnion() {
       ${rows}
     </div>`;
   }).join('');
+  renderUnionRecap();
+}
+
+function renderUnionRecap() {
+  const recapEl = document.getElementById('union-recap');
+  if (!recapEl) return;
+  const MONTHS_FULL = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const unionSessions = state.sessions.filter(s => s.type === 'union');
+  const classSessions = state.sessions.filter(s => s.type === 'class');
+  if (!unionSessions.length && !classSessions.length) { recapEl.innerHTML = ''; return; }
+  const byMonth = {};
+  unionSessions.forEach(s => {
+    const key = s.date.slice(0,7);
+    if (!byMonth[key]) byMonth[key] = { union: [], class: [] };
+    byMonth[key].union.push(s);
+  });
+  classSessions.forEach(s => {
+    const key = s.date.slice(0,7);
+    if (!byMonth[key]) byMonth[key] = { union: [], class: [] };
+    byMonth[key].class.push(s);
+  });
+  const rows = Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).map(key => {
+    const [y, m] = key.split('-');
+    const u = byMonth[key].union;
+    const c = byMonth[key].class;
+    const totU = u.reduce((s,x)=>s+(x.unionPrice||0),0);
+    const totC = c.reduce((s,x)=>s+(x.classPrice||0),0);
+    return `<div style="background:var(--bg3);border-radius:12px;padding:13px 15px;margin-bottom:8px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px">${MONTHS_FULL[parseInt(m)-1]} ${y}</div>
+      ${u.length ? `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0${c.length?';border-bottom:1px solid var(--border)':''}">
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--purple);display:inline-block"></span><span style="font-size:13px;color:var(--text2)">Lezioni Union</span></div>
+        <span style="font-size:13px;font-weight:700;color:var(--purple)">${u.length} lezioni${totU ? ' · €'+totU : ''}</span>
+      </div>` : ''}
+      ${c.length ? `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span><span style="font-size:13px;color:var(--text2)">Classi</span></div>
+        <span style="font-size:13px;font-weight:700;color:var(--green)">${c.length} classi${totC ? ' · €'+totC : ''}</span>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  recapEl.innerHTML = `<div class="card" style="margin-top:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <i class="ti ti-calendar-stats" style="font-size:18px;color:var(--purple)"></i>
+      <div style="font-size:15px;font-weight:700">Recap mensile</div>
+    </div>
+    ${rows}
+  </div>`;
 }
 
 function openAddClassSession() {
