@@ -103,6 +103,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .badge-amber { background: var(--amber-dim); color: var(--amber); }
 .badge-accent { background: var(--accent-dim); color: var(--accent); }
 .badge-purple { background: var(--purple-dim); color: var(--purple); }
+.badge-red { background: var(--red-dim); color: var(--red); }
 
 /* FORM */
 .form-group { margin-bottom: 14px; }
@@ -150,6 +151,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .cal-dot.massage { background: var(--amber); }
 .cal-dot.class { background: var(--green); }
 .cal-dot.union { background: var(--purple); }
+.cal-dot.trial { background: var(--red); }
 
 /* DAY PANEL - modern cards */
 .day-panel { margin-top: 4px; }
@@ -165,6 +167,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .day-panel-item.massage::before { background: var(--amber); }
 .day-panel-item.class::before { background: var(--green); }
 .day-panel-item.union::before { background: var(--purple); }
+.day-panel-item.trial::before { background: var(--red); }
 .day-panel-time { font-size: 13px; color: var(--text); font-family: var(--font); font-weight: 600; width: 48px; flex-shrink: 0; line-height: 1.45; }
 .day-panel-time .t-end { color: var(--text3); font-weight: 500; font-size: 12px; }
 .day-panel-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
@@ -172,6 +175,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .day-panel-icon.massage { background: var(--amber-dim); color: var(--amber); }
 .day-panel-icon.class { background: var(--green-dim); color: var(--green); }
 .day-panel-icon.union { background: var(--purple-dim); color: var(--purple); }
+.day-panel-icon.trial { background: var(--red-dim); color: var(--red); }
 .day-panel-name { font-size: 15px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .day-panel-type { font-size: 12px; color: var(--text2); margin-top: 1px; }
 
@@ -189,6 +193,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .time-event.massage { background: rgba(245,158,11,0.18); border-left: 3px solid var(--amber); }
 .time-event.class { background: rgba(52,211,153,0.18); border-left: 3px solid var(--green); }
 .time-event.union { background: rgba(167,139,250,0.18); border-left: 3px solid var(--purple); }
+.time-event.trial { background: rgba(248,113,113,0.18); border-left: 3px solid var(--red); }
 .time-event-name { font-size: 14px; font-weight: 600; }
 .time-event-time { font-size: 11px; color: var(--text2); font-family: var(--mono); margin-top: 2px; }
 
@@ -208,6 +213,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .w-ev.massage { background: var(--amber-dim); color: var(--amber); border-left: 2px solid var(--amber); }
 .w-ev.class { background: var(--green-dim); color: var(--green); border-left: 2px solid var(--green); }
 .w-ev.union { background: var(--purple-dim); color: var(--purple); border-left: 2px solid var(--purple); }
+.w-ev.trial { background: var(--red-dim); color: var(--red); border-left: 2px solid var(--red); }
 
 /* CLIENTS */
 .client-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 10px; transition: all 0.15s; }
@@ -364,6 +370,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <span><span class="leg-dot" style="background:var(--amber)"></span>Massaggio</span>
         <span><span class="leg-dot" style="background:var(--green)"></span>Classe</span>
         <span><span class="leg-dot" style="background:var(--purple)"></span>Union</span>
+        <span><span class="leg-dot" style="background:var(--red)"></span>Prova</span>
       </div>
       <div id="cal-view"></div>
     </div>
@@ -702,15 +709,15 @@ function renderDayPanel(ds) {
   const idx = d.getDay()===0?6:d.getDay()-1;
   const label = `${DAYS_S[idx]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   const evs = state.sessions.filter(s => s.date === ds).sort((a,b)=>a.startTime>b.startTime?1:-1);
-  const icons = { pt: 'ti-barbell', massage: 'ti-hand-stop', class: 'ti-users-group', union: 'ti-star' };
+  const icons = { pt: 'ti-barbell', massage: 'ti-hand-stop', class: 'ti-users-group', union: 'ti-star', trial: 'ti-user-question' };
   let items = '';
   if (evs.length === 0) {
     items = `<div class="day-panel-empty"><i class="ti ti-calendar-plus"></i>Nessuna sessione in programma<br><span style="font-size:12px">Tocca "Aggiungi" per crearne una</span></div>`;
   } else {
     items = evs.map(s => {
       const c = state.clients.find(x=>x.id===s.clientId);
-      const name = c ? c.name : (s.className||s.unionName||'Classe');
-      const typeL = s.type==='pt'?'Allenamento':s.type==='massage'?'Massaggio':s.type==='union'?'Lezioni Union':'Classe';
+      const name = c ? c.name : (s.trialName||s.className||s.unionName||'Classe');
+      const typeL = s.type==='pt'?'Allenamento':s.type==='massage'?'Massaggio':s.type==='union'?'Lezioni Union':s.type==='trial'?'Lezione Prova':'Classe';
       const ic = icons[s.type] || 'ti-calendar';
       return `<div class="day-panel-item ${s.type}" onclick="openEditSession('${s.id}')">
         <div class="day-panel-time">${s.startTime}<br><span class="t-end">${s.endTime}</span></div>
@@ -1017,10 +1024,10 @@ function renderRiepilogo() {
       <div style="font-size:13px;font-weight:500;margin-bottom:12px;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px">Sessioni recenti</div>
       ${recent.length ? recent.map(s=>{
         const c=state.clients.find(x=>x.id===s.clientId);
-        const n=c?c.name:s.className||s.unionName||'Classe';
-        const p=s.type==='class'?s.classPrice:s.type==='union'?s.unionPrice:(c?s.type==='massage'?(c.massagePrice||c.pricePerSession):c.pricePerSession:0);
-        const bc=s.type==='pt'?'badge-blue':s.type==='massage'?'badge-amber':s.type==='union'?'badge-purple':'badge-green';
-        const tl=s.type==='pt'?'PT':s.type==='massage'?'Massaggio':s.type==='union'?'Union':'Classe';
+        const n=c?c.name:s.trialName||s.className||s.unionName||'Classe';
+        const p=s.type==='class'?s.classPrice:s.type==='union'?s.unionPrice:s.type==='trial'?0:(c?s.type==='massage'?(c.massagePrice||c.pricePerSession):c.pricePerSession:0);
+        const bc=s.type==='pt'?'badge-blue':s.type==='massage'?'badge-amber':s.type==='union'?'badge-purple':s.type==='trial'?'badge-red':'badge-green';
+        const tl=s.type==='pt'?'PT':s.type==='massage'?'Massaggio':s.type==='union'?'Union':s.type==='trial'?'Prova':'Classe';
         return `<div class="session-item">
           <div><div style="font-size:14px;font-weight:500">${n}</div><div style="font-size:12px;color:var(--text2);font-family:var(--mono)">${s.date} · ${s.startTime}–${s.endTime}</div></div>
           <div style="display:flex;gap:8px;align-items:center"><span class="badge ${bc}">${tl}</span><span style="font-family:var(--mono);font-size:14px">€${p||0}</span></div>
@@ -1086,6 +1093,7 @@ function openAddSession(dateStr, slotTime) {
       <option value="massage">Massaggio</option>
       <option value="class">Classe</option>
       <option value="union">Lezioni Union</option>
+      <option value="trial">Lezione Prova</option>
     </select></div>
     <div id="s-client-row" class="form-group"><label>Cliente</label><select id="s-client">${clientOpts}</select></div>
     <div id="s-class-row" style="display:none">
@@ -1094,6 +1102,9 @@ function openAddSession(dateStr, slotTime) {
     </div>
     <div id="s-union-row" style="display:none">
       <div class="form-group"><label>Allievo Union</label><select id="s-unionclient">${unionOpts}</select></div>
+    </div>
+    <div id="s-trial-row" style="display:none">
+      <div class="form-group"><label>Nome cliente</label><input id="s-trialname" type="text" placeholder="Es. Mario Rossi" autocomplete="off"></div>
     </div>
     <div class="form-group"><label>Note</label><input id="s-notes" type="text" placeholder="Opzionale"></div>
     <div class="form-group" style="background:var(--bg3);border-radius:12px;padding:12px 14px">
@@ -1125,9 +1136,10 @@ function toggleRepeat() {
 
 function toggleSessionType() {
   const t = document.getElementById('s-type').value;
-  document.getElementById('s-client-row').style.display = (t==='class'||t==='union')?'none':'block';
+  document.getElementById('s-client-row').style.display = (t==='class'||t==='union'||t==='trial')?'none':'block';
   document.getElementById('s-class-row').style.display = t==='class'?'block':'none';
   document.getElementById('s-union-row').style.display = t==='union'?'block':'none';
+  document.getElementById('s-trial-row').style.display = t==='trial'?'block':'none';
 }
 
 function checkSlotConflict() {
@@ -1169,6 +1181,8 @@ function saveSession(id) {
     session.unionName = uc ? uc.name : 'Union';
     session.unionPrice = uc ? (uc.pricePerSession||0) : 0;
     session.pkg = uc ? (uc.pkg||0) : 0;
+  } else if (type==='trial') {
+    session.trialName = document.getElementById('s-trialname').value.trim() || 'Prova';
   } else {
     const cid = document.getElementById('s-client').value;
     if (!cid) return alert('Aggiungi prima un cliente');
@@ -1215,8 +1229,8 @@ function openEditSession(id) {
   const s = state.sessions.find(x=>x.id===id); if (!s) return;
   const c = state.clients.find(x=>x.id===s.clientId);
   const n = c ? c.name : (s.className||'Classe');
-  const tl = s.type==='pt'?'Allenamento':s.type==='massage'?'Massaggio':s.type==='union'?'Lezioni Union':'Classe';
-  const bc = s.type==='pt'?'badge-blue':s.type==='massage'?'badge-amber':s.type==='union'?'badge-purple':'badge-green';
+  const tl = s.type==='pt'?'Allenamento':s.type==='massage'?'Massaggio':s.type==='union'?'Lezioni Union':s.type==='trial'?'Lezione Prova':'Classe';
+  const bc = s.type==='pt'?'badge-blue':s.type==='massage'?'badge-amber':s.type==='union'?'badge-purple':s.type==='trial'?'badge-red':'badge-green';
   // calcola durata originale in minuti
   const [sh,sm] = s.startTime.split(':').map(Number);
   const [eh,em] = s.endTime.split(':').map(Number);
