@@ -1101,7 +1101,11 @@ function openAddSession(dateStr, slotTime) {
       <div class="form-group"><label>Prezzo classe (€)</label><input id="s-classprice" type="number" value="15"></div>
     </div>
     <div id="s-union-row" style="display:none">
-      <div class="form-group"><label>Allievo Union</label><select id="s-unionclient">${unionOpts}</select></div>
+      <div class="form-group">
+        <div class="checkbox-row" style="margin-bottom:8px"><input id="s-union-single" type="checkbox" onchange="toggleUnionSingle()"><label for="s-union-single" style="margin:0">Lezione singola (non salvare nella lista)</label></div>
+        <div id="s-union-select-wrap"><label>Allievo Union</label><select id="s-unionclient">${unionOpts}</select></div>
+        <div id="s-union-name-wrap" style="display:none"><label>Nome cliente</label><input id="s-unionname" type="text" placeholder="Es. Mario Rossi" autocomplete="off"><div class="form-group" style="margin-top:8px"><label>Prezzo lezione (€)</label><input id="s-unionprice" type="number" value="0"></div></div>
+      </div>
     </div>
     <div id="s-trial-row" style="display:none">
       <div class="form-group"><label>Nome cliente</label><input id="s-trialname" type="text" placeholder="Es. Mario Rossi" autocomplete="off"></div>
@@ -1132,6 +1136,12 @@ function repeatDefaultEnd(dateStr) {
 function toggleRepeat() {
   const on = document.getElementById('s-repeat').checked;
   document.getElementById('s-repeat-opts').style.display = on ? 'block' : 'none';
+}
+
+function toggleUnionSingle() {
+  const single = document.getElementById('s-union-single').checked;
+  document.getElementById('s-union-select-wrap').style.display = single ? 'none' : 'block';
+  document.getElementById('s-union-name-wrap').style.display = single ? 'block' : 'none';
 }
 
 function toggleSessionType() {
@@ -1174,13 +1184,24 @@ function saveSession(id) {
     const cpRaw = document.getElementById('s-classprice').value;
     session.classPrice = cpRaw === '' ? 15 : (parseFloat(cpRaw) || 0);
   } else if (type==='union') {
-    const ucid = document.getElementById('s-unionclient').value;
-    if (!ucid) return alert('Aggiungi prima un allievo Union');
-    const uc = state.unionClients.find(x=>x.id===ucid);
-    session.unionClientId = ucid;
-    session.unionName = uc ? uc.name : 'Union';
-    session.unionPrice = uc ? (uc.pricePerSession||0) : 0;
-    session.pkg = uc ? (uc.pkg||0) : 0;
+    const single = document.getElementById('s-union-single').checked;
+    if (single) {
+      const name = document.getElementById('s-unionname').value.trim();
+      if (!name) return alert('Inserisci il nome del cliente');
+      const price = parseFloat(document.getElementById('s-unionprice').value) || 0;
+      session.unionSingle = true;
+      session.unionName = name;
+      session.unionPrice = price;
+      session.pkg = 0;
+    } else {
+      const ucid = document.getElementById('s-unionclient').value;
+      if (!ucid) return alert('Aggiungi prima un allievo Union');
+      const uc = state.unionClients.find(x=>x.id===ucid);
+      session.unionClientId = ucid;
+      session.unionName = uc ? uc.name : 'Union';
+      session.unionPrice = uc ? (uc.pricePerSession||0) : 0;
+      session.pkg = uc ? (uc.pkg||0) : 0;
+    }
   } else if (type==='trial') {
     session.trialName = document.getElementById('s-trialname').value.trim() || 'Prova';
   } else {
