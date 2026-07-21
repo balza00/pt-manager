@@ -396,13 +396,13 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <div class="sec-title" style="display:flex;align-items:center;gap:8px"><i class="ti ti-star" style="color:var(--purple)"></i> Union</div>
         <button class="btn btn-sm" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3)" onclick="openAddUnionClient()"><i class="ti ti-plus"></i> Nuovo allievo</button>
       </div>
+      <div id="union-recap"></div>
       <div id="union-list"></div>
       <div class="sec-header" style="margin-top:20px">
         <div class="sec-title" style="display:flex;align-items:center;gap:8px;font-size:16px"><i class="ti ti-users-group" style="color:var(--green)"></i> Classi</div>
         <button class="btn btn-sm" onclick="openAddClassSession()"><i class="ti ti-plus"></i> Nuova classe</button>
       </div>
       <div id="union-classes-list"></div>
-      <div id="union-recap"></div>
     </div>
 
     <!-- IMPOSTAZIONI -->
@@ -1546,6 +1546,7 @@ function renderUnion() {
   const list = document.getElementById('union-list');
   if (!list) return;
   if (!state.unionClients) state.unionClients = [];
+  renderUnionRecap();
 
   const totalClients = state.unionClients.length;
   let totDaSaldare = 0;
