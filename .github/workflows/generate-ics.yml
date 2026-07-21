@@ -79,6 +79,37 @@ jobs:
                 lines.push('END:VCALENDAR');
                 fs.writeFileSync('union.ics', lines.join('\r\n'));
                 console.log('OK - ' + sessions.length + ' eventi Union generati');
+
+                // trial.ics
+                const trialSessions = (state.sessions || []).filter(s => s.type === 'trial');
+                let tlines = [
+                  'BEGIN:VCALENDAR',
+                  'VERSION:2.0',
+                  'PRODID:-//PT Manager//Trial Calendar//IT',
+                  'CALSCALE:GREGORIAN',
+                  'METHOD:PUBLISH',
+                  'X-WR-CALNAME:Lezioni Prova',
+                  'X-WR-CALDESC:Calendario lezioni di prova',
+                  'X-WR-TIMEZONE:Europe/Rome'
+                ];
+                trialSessions.forEach(s => {
+                  const [sy, sm, sd] = s.date.split('-');
+                  const [sh, smin] = s.startTime.split(':');
+                  const [eh, emin] = s.endTime.split(':');
+                  const dtstart = sy + sm + sd + 'T' + sh.padStart(2,'0') + smin.padStart(2,'0') + '00';
+                  const dtend   = sy + sm + sd + 'T' + eh.padStart(2,'0') + emin.padStart(2,'0') + '00';
+                  tlines.push('BEGIN:VEVENT');
+                  tlines.push('UID:' + s.id + '@ptmanager-trial');
+                  tlines.push('DTSTAMP:' + now);
+                  tlines.push('DTSTART;TZID=Europe/Rome:' + dtstart);
+                  tlines.push('DTEND;TZID=Europe/Rome:' + dtend);
+                  tlines.push('SUMMARY:Prova - ' + (s.trialName || 'Cliente'));
+                  if (s.notes) tlines.push('DESCRIPTION:' + s.notes);
+                  tlines.push('END:VEVENT');
+                });
+                tlines.push('END:VCALENDAR');
+                fs.writeFileSync('trial.ics', tlines.join('\r\n'));
+                console.log('OK - ' + trialSessions.length + ' eventi Prova generati');
               } catch(e) {
                 console.error('Errore:', e.message);
                 process.exit(1);
@@ -96,7 +127,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/balza00/pt-manager.git
           echo "{\"v\":\"$(date +%s)\"}" > version.json
-          git add union.ics version.json
+          git add union.ics trial.ics version.json
           if git diff --cached --quiet; then
             echo "Nessuna modifica"
           else

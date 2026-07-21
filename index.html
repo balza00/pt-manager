@@ -378,10 +378,18 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <!-- CLIENTI -->
     <div id="sec-clienti" class="section">
       <div class="sec-header">
-        <div class="sec-title">Clienti</div>
+        <div class="sec-title">Clienti PT</div>
         <button class="btn btn-accent btn-sm" onclick="openAddClient()"><i class="ti ti-plus"></i> Nuovo</button>
       </div>
       <div id="clients-list"></div>
+    </div>
+
+    <div id="sec-massaggi" class="section">
+      <div class="sec-header">
+        <div class="sec-title"><i class="ti ti-hand-stop" style="color:var(--amber)"></i> Massaggi</div>
+        <button class="btn btn-sm" style="background:rgba(245,158,11,0.12);color:var(--amber);border-color:rgba(245,158,11,0.3)" onclick="openAddClient('massage')"><i class="ti ti-plus"></i> Nuovo</button>
+      </div>
+      <div id="massage-list"></div>
     </div>
 
     <!-- RIEPILOGO -->
@@ -437,6 +445,9 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     </button>
     <button class="nav-btn" data-tab="union" onclick="showTab('union')">
       <i class="ti ti-star"></i><span>Union</span>
+    </button>
+    <button class="nav-btn" data-tab="massaggi" onclick="showTab('massaggi')">
+      <i class="ti ti-hand-stop"></i><span>Massaggi</span>
     </button>
     <button class="nav-btn" data-tab="clienti" onclick="showTab('clienti')">
       <i class="ti ti-users"></i><span>Clienti</span>
@@ -629,6 +640,7 @@ function showTab(t) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   if (t === 'riepilogo') renderRiepilogo();
   if (t === 'union') renderUnion();
+  if (t === 'massaggi') renderMassaggi();
   if (t === 'impostazioni') renderInstallSection();
   document.getElementById('content').scrollTo(0, 0);
 }
@@ -808,13 +820,81 @@ function changeDay(d) { dayDate = fmtDate(addDays(parseDate(dayDate), d)); rende
 // ── CLIENTS ──
 let clientSearchTerm = '';
 
+function renderMassaggi() {
+  const list = document.getElementById('massage-list');
+  if (!list) return;
+  const clients = state.clients.filter(c => c.type === 'massage');
+  if (!clients.length) {
+    list.innerHTML = `<div class="empty"><i class="ti ti-hand-stop"></i><p>Nessun cliente massaggi ancora.<br>Aggiungine uno con il tasto +</p></div>`;
+    return;
+  }
+  let totDaSaldare = 0;
+  clients.forEach(c => {
+    if (!c.paid) {
+      const tp = (c.totalSessions||0)*(c.massagePrice||c.pricePerSession||0);
+      const pd = (c.payments||[]).reduce((s,p)=>s+p.amount,0);
+      totDaSaldare += Math.max(0, tp - pd);
+    }
+  });
+  const overview = `<div class="clients-overview">
+    <div class="co-card"><div class="co-label">Clienti</div><div class="co-value">${clients.length}</div></div>
+    <div class="co-card"><div class="co-label">Da saldare</div><div class="co-value ${totDaSaldare>0?'red':''}">€${totDaSaldare}</div></div>
+  </div>`;
+  const cards = clients.map(c => {
+    const currentPkg = c.pkg || 0;
+    const done = state.sessions.filter(s => s.clientId === c.id && (s.pkg||0) === currentPkg).length + (c.startingSessions||0);
+    const pct = c.totalSessions ? Math.min(100, Math.round(done/c.totalSessions*100)) : 0;
+    const rem = c.totalSessions ? Math.max(0, c.totalSessions - done) : null;
+    const isFinished = c.totalSessions && rem === 0;
+    const initials = c.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+    let payPill = '';
+    if (c.paid) {
+      payPill = '<span class="client-pill green"><i class="ti ti-check"></i> Pagato</span>';
+    } else {
+      const tp = (c.totalSessions||0)*(c.massagePrice||c.pricePerSession||0);
+      const pd = (c.payments||[]).reduce((s,p)=>s+p.amount,0);
+      if (pd > 0) payPill = `<span class="client-pill amber"><i class="ti ti-clock"></i> Acconto</span>`;
+      else payPill = '<span class="client-pill red"><i class="ti ti-alert-circle"></i> Da pagare</span>';
+    }
+    return `<div class="client-card${isFinished?' finished':''}">
+      <div class="client-header" onclick="editClient('${c.id}')">
+        <div class="avatar massage">${initials}</div>
+        <div class="client-info">
+          <div class="client-name">${c.name}</div>
+          <div class="client-sub">€${c.massagePrice||c.pricePerSession||0}/massaggio</div>
+        </div>
+        ${payPill}
+        <i class="ti ti-chevron-right client-chevron"></i>
+      </div>
+      ${c.totalSessions ? `
+        <div class="progress-wrap">
+          <div class="progress-info">
+            <span style="color:var(--text2)">${done} / ${c.totalSessions} sessioni</span>
+            ${isFinished
+              ? '<span class="client-pill green" style="padding:2px 8px"><i class="ti ti-circle-check"></i> Completato</span>'
+              : `<span style="color:var(--accent);font-weight:700">${rem} rimaste</span>`}
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
+        ${isFinished ? `<button class="btn btn-accent btn-full" style="margin-top:12px" onclick="openRenewPackage('${c.id}')"><i class="ti ti-refresh"></i> Rinnova pacchetto</button>` : ''}
+      ` : `<div class="client-stat-row"><div class="client-stat"><div class="client-stat-label">Sessioni svolte</div><div class="client-stat-value">${done}</div></div><div class="client-stat" style="display:flex;align-items:center;justify-content:center"><button class="btn btn-sm" onclick="openRenewPackage('${c.id}')"><i class="ti ti-refresh"></i> Nuovo pacchetto</button></div></div>`}
+    </div>`;
+  }).join('');
+  list.innerHTML = overview + cards;
+}
+
 function renderClients() {
   const list = document.getElementById('clients-list');
   if (!list) return;
-  if (!state.clients.length) {
+  const ptClients = state.clients.filter(c => c.type !== 'massage');
+  if (!ptClients.length) {
     list.innerHTML = `<div class="empty"><i class="ti ti-users"></i><p>Nessun cliente ancora.<br>Aggiungine uno con il tasto +</p></div>`;
     return;
   }
+
+  // Override state.clients solo per questo render
+  const _all = state.clients;
+  state.clients = ptClients;
 
   // Overview in cima
   let totDaSaldare = 0, totAttivi = 0, totFiniti = 0;
@@ -923,6 +1003,7 @@ function renderClients() {
   }).join('');
 
   list.innerHTML = overview + search + cards;
+  state.clients = _all;
   restoreSearchFocus();
 }
 
@@ -1293,13 +1374,13 @@ function deleteSession(id) {
 }
 
 // ── CLIENTS ──
-function openAddClient() {
+function openAddClient(defaultType) {
   openSheet(`
     <h3>Nuovo cliente</h3>
     <div class="form-group"><label>Nome completo</label><input id="c-name" type="text" placeholder="Mario Rossi" autocomplete="name"></div>
     <div class="form-group"><label>Tipo servizio</label><select id="c-type">
-      <option value="pt">Allenamento personale</option>
-      <option value="massage">Massaggio</option>
+      <option value="pt"${defaultType==='pt'||!defaultType?' selected':''}>Allenamento personale</option>
+      <option value="massage"${defaultType==='massage'?' selected':''}>Massaggio</option>
       <option value="both">Entrambi</option>
     </select></div>
     <div class="form-row-2">
