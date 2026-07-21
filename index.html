@@ -1641,43 +1641,7 @@ function renderUnion() {
 
   // Render classi
   const classesList = document.getElementById('union-classes-list');
-  if (!classesList) return;
-  const classSessions = state.sessions.filter(s => s.type==='class').sort((a,b)=>b.date.localeCompare(a.date));
-  if (!classSessions.length) {
-    classesList.innerHTML = `<div class="day-panel-empty" style="margin-bottom:10px"><i class="ti ti-users-group"></i>Nessuna classe ancora<br><span style="font-size:12px">Tocca "Nuova classe" per aggiungerne una</span></div>`;
-    renderUnionRecap();
-    return;
-  }
-  // Raggruppa per mese
-  const byMonth = {};
-  classSessions.forEach(s => {
-    const key = s.date.slice(0,7);
-    if (!byMonth[key]) byMonth[key] = [];
-    byMonth[key].push(s);
-  });
-  const MONTHS_FULL = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-  classesList.innerHTML = Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).map(key => {
-    const [y,m] = key.split('-');
-    const sessions = byMonth[key];
-    const totale = sessions.reduce((s,x)=>s+(x.classPrice||0),0);
-    const rows = sessions.map(s => `
-      <div class="day-panel-item class" onclick="openEditSession('${s.id}')">
-        <div class="day-panel-time">${s.startTime}<br><span class="t-end">${s.endTime}</span></div>
-        <div class="day-panel-icon class"><i class="ti ti-users-group"></i></div>
-        <div style="flex:1;min-width:0">
-          <div class="day-panel-name">${s.className||'Classe'}</div>
-          <div class="day-panel-type">${s.date}${s.classPrice?` · €${s.classPrice}`:''}</div>
-        </div>
-        <button class="btn btn-icon btn-sm btn-danger" onclick="event.stopPropagation();deleteSession('${s.id}')"><i class="ti ti-trash"></i></button>
-      </div>`).join('');
-    return `<div class="card" style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-size:14px;font-weight:700">${MONTHS_FULL[parseInt(m)-1]} ${y}</div>
-        <div style="font-size:14px;font-weight:700;color:var(--green)">€${totale} · ${sessions.length} classi</div>
-      </div>
-      ${rows}
-    </div>`;
-  }).join('');
+  if (classesList) classesList.innerHTML = '';
   renderUnionRecap();
 }
 
