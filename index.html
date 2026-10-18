@@ -1224,7 +1224,7 @@ function openAddSession(dateStr, slotTime) {
       <button class="btn btn-full" onclick="closeSheet()">Annulla</button>
       <button class="btn btn-accent btn-full" onclick="saveSession()">Salva</button>
     </div>`);
-  setTimeout(checkSlotConflict, 50);
+  setTimeout(() => { toggleSessionType(); checkSlotConflict(); }, 50);
 }
 
 function repeatDefaultEnd(dateStr) {
