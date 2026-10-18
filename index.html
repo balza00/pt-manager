@@ -735,13 +735,25 @@ function renderDayPanel(ds) {
       let lessonBadge = '';
       if (c && c.totalSessions) {
         const pkg = c.pkg || 0;
-        // ordina cronologicamente le sessioni di questo pacchetto e trova la posizione di questa
         const pkgSessions = state.sessions
           .filter(x => x.clientId === c.id && (x.pkg||0) === pkg)
           .sort((a,b) => (a.date+a.startTime).localeCompare(b.date+b.startTime));
         const pos = pkgSessions.findIndex(x => x.id === s.id);
         const lessonNum = (c.startingSessions || 0) + pos + 1;
         lessonBadge = `<span style="font-size:12px;color:var(--accent);font-weight:700;margin-left:6px">${lessonNum}/${c.totalSessions}</span>`;
+      }
+      // Numero lezione per allievi Union con pacchetto
+      if (s.unionClientId) {
+        const uc = state.unionClients && state.unionClients.find(x=>x.id===s.unionClientId);
+        if (uc && uc.totalSessions) {
+          const upkg = uc.pkg || 0;
+          const upkgSessions = state.sessions
+            .filter(x => x.unionClientId === uc.id && (x.pkg||0) === upkg)
+            .sort((a,b) => (a.date+a.startTime).localeCompare(b.date+b.startTime));
+          const upos = upkgSessions.findIndex(x => x.id === s.id);
+          const uLessonNum = (uc.startingSessions || 0) + upos + 1;
+          lessonBadge = `<span style="font-size:12px;color:var(--purple,#a78bfa);font-weight:700;margin-left:6px">${uLessonNum}/${uc.totalSessions}</span>`;
+        }
       }
       return `<div class="day-panel-item ${s.type}" onclick="openEditSession('${s.id}')">
         <div class="day-panel-time">${s.startTime}<br><span class="t-end">${s.endTime}</span></div>
@@ -1152,7 +1164,15 @@ function openAddSession(dateStr, slotTime) {
       }).join('')
     : '<option value="">Nessun cliente – aggiungine uno</option>';
   const unionOpts = (state.unionClients && state.unionClients.length)
-    ? state.unionClients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
+    ? state.unionClients.map(c=>{
+        const pkg = c.pkg || 0;
+        const cal = state.sessions.filter(s => s.unionClientId === c.id && (s.pkg||0) === pkg).length;
+        const done = cal + (c.startingSessions || 0);
+        const finished = c.totalSessions && done >= c.totalSessions;
+        if (finished) return `<option value="${c.id}" disabled style="color:#5a5652">${c.name} — pacchetto finito, rinnova</option>`;
+        const rem = c.totalSessions ? ` (${done}/${c.totalSessions})` : '';
+        return `<option value="${c.id}">${c.name}${rem}</option>`;
+      }).join('')
     : '<option value="">Nessun allievo Union – aggiungine uno</option>';
   // Calcola gli intervalli occupati (in minuti dall'inizio giornata) considerando la durata
   const busyRanges = state.sessions.filter(s => s.date === selDate).map(s => {
@@ -1298,6 +1318,15 @@ function saveSession(id) {
       const ucid = document.getElementById('s-unionclient').value;
       if (!ucid) return alert('Aggiungi prima un allievo Union');
       const uc = state.unionClients.find(x=>x.id===ucid);
+      // Blocco: non aggiungere lezioni a un allievo Union col pacchetto finito
+      if (uc) {
+        const upkg = uc.pkg || 0;
+        const ucal = state.sessions.filter(s => s.unionClientId === uc.id && (s.pkg||0) === upkg).length;
+        const udone = ucal + (uc.startingSessions || 0);
+        if (uc.totalSessions && udone >= uc.totalSessions) {
+          return alert(`${uc.name} ha completato il pacchetto (${udone}/${uc.totalSessions}). Rinnova il pacchetto prima di aggiungere nuove lezioni.`);
+        }
+      }
       session.unionClientId = ucid;
       session.unionName = uc ? uc.name : 'Union';
       session.unionPrice = uc ? (uc.pricePerSession||0) : 0;
