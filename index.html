@@ -847,7 +847,7 @@ let clientSearchTerm = '';
 function renderMassaggi() {
   const list = document.getElementById('massage-list');
   if (!list) return;
-  const clients = state.clients.filter(c => c.type === 'massage');
+  const clients = state.clients.filter(c => c.type === 'massage').sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'}));
   if (!clients.length) {
     list.innerHTML = `<div class="empty"><i class="ti ti-hand-stop"></i><p>Nessun cliente massaggi ancora.<br>Aggiungine uno con il tasto +</p></div>`;
     return;
@@ -910,7 +910,7 @@ function renderMassaggi() {
 function renderClients() {
   const list = document.getElementById('clients-list');
   if (!list) return;
-  const ptClients = state.clients.filter(c => c.type !== 'massage');
+  const ptClients = state.clients.filter(c => c.type !== 'massage').sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'}));
   if (!ptClients.length) {
     list.innerHTML = `<div class="empty"><i class="ti ti-users"></i><p>Nessun cliente ancora.<br>Aggiungine uno con il tasto +</p></div>`;
     return;
@@ -949,7 +949,7 @@ function renderClients() {
   </div>`;
 
   const term = clientSearchTerm.toLowerCase().trim();
-  const filtered = term ? state.clients.filter(c => c.name.toLowerCase().includes(term)) : state.clients;
+  const filtered = (term ? state.clients.filter(c => c.name.toLowerCase().includes(term)) : [...state.clients]).sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'}));
 
   if (!filtered.length) {
     list.innerHTML = overview + search + `<div class="empty"><i class="ti ti-search-off"></i><p>Nessun cliente trovato</p></div>`;
@@ -1153,7 +1153,7 @@ function openAddSession(dateStr, slotTime) {
   const selDate = dateStr || dayDate;
   const selTime = slotTime || '09:00';
   const clientOpts = state.clients.length
-    ? state.clients.map(c=>{
+    ? [...state.clients].sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'})).map(c=>{
         const pkg = c.pkg || 0;
         const cal = state.sessions.filter(s => s.clientId === c.id && (s.pkg||0) === pkg).length;
         const done = cal + (c.startingSessions || 0);
@@ -1164,7 +1164,7 @@ function openAddSession(dateStr, slotTime) {
       }).join('')
     : '<option value="">Nessun cliente – aggiungine uno</option>';
   const unionOpts = (state.unionClients && state.unionClients.length)
-    ? state.unionClients.map(c=>{
+    ? [...state.unionClients].sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'})).map(c=>{
         const pkg = c.pkg || 0;
         const cal = state.sessions.filter(s => s.unionClientId === c.id && (s.pkg||0) === pkg).length;
         const done = cal + (c.startingSessions || 0);
@@ -1497,6 +1497,7 @@ function saveClient(id) {
   };
   if (id) { const i=state.clients.findIndex(c=>c.id===id); state.clients[i]=client; }
   else state.clients.push(client);
+  state.clients.sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'}));
   saveState(); closeSheet(); render();
   toast(id ? 'Cliente aggiornato' : 'Cliente aggiunto ✓');
 }
@@ -1743,7 +1744,7 @@ function renderUnion() {
     return;
   }
 
-  const cards = state.unionClients.map(c => {
+  const cards = [...state.unionClients].sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'})).map(c => {
     const currentPkg = c.pkg || 0;
     const calLessons = state.sessions.filter(s => s.unionClientId===c.id && (s.pkg||0)===currentPkg).length;
     const done = calLessons + (c.startingSessions||0);
@@ -1963,6 +1964,7 @@ function saveUnionClient(id) {
   };
   if (id) { const i=state.unionClients.findIndex(c=>c.id===id); state.unionClients[i]=client; }
   else state.unionClients.push(client);
+  state.unionClients.sort((a,b)=>a.name.localeCompare(b.name,'it',{sensitivity:'base'}));
   saveState(); closeSheet(); renderUnion();
   toast(id ? 'Allievo aggiornato' : 'Allievo aggiunto ✓');
 }
