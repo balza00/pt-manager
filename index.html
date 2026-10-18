@@ -731,10 +731,22 @@ function renderDayPanel(ds) {
       const name = c ? c.name : (s.trialName||s.className||s.unionName||'Classe');
       const typeL = s.type==='pt'?'Allenamento':s.type==='massage'?'Massaggio':s.type==='union'?'Lezioni Union':s.type==='trial'?'Lezione Prova':'Classe';
       const ic = icons[s.type] || 'ti-calendar';
+      // Numero lezione per clienti PT/massage con pacchetto
+      let lessonBadge = '';
+      if (c && c.totalSessions) {
+        const pkg = c.pkg || 0;
+        // ordina cronologicamente le sessioni di questo pacchetto e trova la posizione di questa
+        const pkgSessions = state.sessions
+          .filter(x => x.clientId === c.id && (x.pkg||0) === pkg)
+          .sort((a,b) => (a.date+a.startTime).localeCompare(b.date+b.startTime));
+        const pos = pkgSessions.findIndex(x => x.id === s.id);
+        const lessonNum = (c.startingSessions || 0) + pos + 1;
+        lessonBadge = `<span style="font-size:12px;color:var(--accent);font-weight:700;margin-left:6px">${lessonNum}/${c.totalSessions}</span>`;
+      }
       return `<div class="day-panel-item ${s.type}" onclick="openEditSession('${s.id}')">
         <div class="day-panel-time">${s.startTime}<br><span class="t-end">${s.endTime}</span></div>
         <div class="day-panel-icon ${s.type}"><i class="ti ${ic}"></i></div>
-        <div style="flex:1;min-width:0"><div class="day-panel-name">${name}</div><div class="day-panel-type">${typeL}</div></div>
+        <div style="flex:1;min-width:0"><div class="day-panel-name">${name}${lessonBadge}</div><div class="day-panel-type">${typeL}</div></div>
         <i class="ti ti-chevron-right" style="color:var(--text3);font-size:16px"></i>
       </div>`;
     }).join('');
@@ -1129,7 +1141,15 @@ function openAddSession(dateStr, slotTime) {
   const selDate = dateStr || dayDate;
   const selTime = slotTime || '09:00';
   const clientOpts = state.clients.length
-    ? state.clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
+    ? state.clients.map(c=>{
+        const pkg = c.pkg || 0;
+        const cal = state.sessions.filter(s => s.clientId === c.id && (s.pkg||0) === pkg).length;
+        const done = cal + (c.startingSessions || 0);
+        const finished = c.totalSessions && done >= c.totalSessions;
+        if (finished) return `<option value="${c.id}" disabled style="color:#5a5652">${c.name} — pacchetto finito, rinnova</option>`;
+        const rem = c.totalSessions ? ` (${done}/${c.totalSessions})` : '';
+        return `<option value="${c.id}">${c.name}${rem}</option>`;
+      }).join('')
     : '<option value="">Nessun cliente – aggiungine uno</option>';
   const unionOpts = (state.unionClients && state.unionClients.length)
     ? state.unionClients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
@@ -1170,10 +1190,10 @@ function openAddSession(dateStr, slotTime) {
       <option value="90">1h 30min</option><option value="120">2 ore</option>
     </select></div>
     <div class="form-group"><label>Tipo</label><select id="s-type" onchange="toggleSessionType()">
+      <option value="union">Lezioni Union</option>
       <option value="pt">Allenamento</option>
       <option value="massage">Massaggio</option>
       <option value="class">Classe</option>
-      <option value="union">Lezioni Union</option>
       <option value="trial">Lezione Prova</option>
     </select></div>
     <div id="s-client-row" class="form-group"><label>Cliente</label><select id="s-client">${clientOpts}</select></div>
@@ -1288,6 +1308,16 @@ function saveSession(id) {
   } else {
     const cid = document.getElementById('s-client').value;
     if (!cid) return alert('Aggiungi prima un cliente');
+    // Blocco: non aggiungere sessioni a un cliente col pacchetto finito
+    const cc = state.clients.find(x=>x.id===cid);
+    if (cc) {
+      const pkg = cc.pkg || 0;
+      const cal = state.sessions.filter(s => s.clientId === cc.id && (s.pkg||0) === pkg).length;
+      const done = cal + (cc.startingSessions || 0);
+      if (cc.totalSessions && done >= cc.totalSessions) {
+        return alert(`${cc.name} ha completato il pacchetto (${done}/${cc.totalSessions}). Rinnova il pacchetto prima di aggiungere nuove sessioni.`);
+      }
+    }
     session.clientId = cid;
   }
   // Aggiungi pkg del cliente alla sessione (solo per pt/massage, non classi)
